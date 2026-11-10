@@ -12,6 +12,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -25,6 +26,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.ar.core.ArCoreApk
@@ -89,10 +91,15 @@ class CameraFragment : Fragment() {
     private var arTracking = false
     private var cameraStreaming = false
 
-    private var currentModelFile = "espada.glb"
+    private var currentModelFile = "escudo.glb"
 
     private lateinit var gameViewModel: GameViewModel
     private var livesText: TextView? = null
+    private var targetText: TextView? = null
+    private var startButton: Button? = null
+    private var gameJob: Job? = null
+    private var lastGameTickMs: Long? = null
+    private val modelCache = mutableMapOf<String, ModelNode>()
     private var rulesDialog: androidx.appcompat.app.AlertDialog? = null
     private var telaEncerramentoAberta = false
 
@@ -134,7 +141,7 @@ class CameraFragment : Fragment() {
 
         gameViewModel = ViewModelProvider(requireActivity())[GameViewModel::class.java]
         if (gameViewModel.jogoEncerrado) {
-            encerrarJogo(getString(R.string.game_over_reason))
+            encerrarJogo(motivoDoResultado())
             return
         }
         createControls()
@@ -146,14 +153,16 @@ class CameraFragment : Fragment() {
 
         val selectedModel = sharedViewModel.selectedModel.value
 
-        if (!selectedModel.isNullOrBlank()) {
+        if (gameViewModel.partidaIniciada) {
+            currentModelFile = gameViewModel.objetoAtual.arquivo
+        } else if (!selectedModel.isNullOrBlank()) {
             currentModelFile = selectedModel
         } else {
             sharedViewModel.selectModel(currentModelFile)
         }
 
         sharedViewModel.selectedModel.observe(viewLifecycleOwner) { path ->
-            if (!gameViewModel.jogoEncerrado && !path.isNullOrBlank() && path != currentModelFile) {
+            if (!gameViewModel.partidaIniciada && !path.isNullOrBlank() && path != currentModelFile) {
                 currentModelFile = path
                 loadModel()
             }
@@ -173,27 +182,99 @@ class CameraFragment : Fragment() {
             }
         }
 
-        if (gameViewModel.partidaIniciada) {
-            checkAvailability()
-        } else {
-            rulesDialog = MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.game_rules_title)
-                .setMessage(R.string.game_rules)
-                .setCancelable(false)
-                .setPositiveButton(R.string.start_game) { _, _ ->
-                    gameViewModel.iniciarPartida()
-                    checkAvailability()
+        checkAvailability()
+        startGameLoop()
+    }
+
+    private fun mostrarRegras() {
+        if (gameViewModel.partidaIniciada || rulesDialog?.isShowing == true) return
+        rulesDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.game_rules_title)
+            .setMessage(R.string.game_rules)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.start_game) { _, _ ->
+                gameViewModel.iniciarPartida()
+                currentModelFile = gameViewModel.objetoAtual.arquivo
+                loadModel(preserveAnchor = true)
+                updateGameControls()
+            }
+            .show()
+    }
+
+    private fun motivoDoResultado(): String = getString(when (gameViewModel.resultado) {
+        GameViewModel.Resultado.VITORIA -> R.string.victory_reason
+        GameViewModel.Resultado.TEMPO_ESGOTADO -> R.string.timeout_reason
+        else -> R.string.game_over_reason
+    })
+
+    private fun sceneReady(): Boolean = modelNode != null && when (mode) {
+        Mode.AR -> anchorNode != null && arTracking
+        Mode.CAMERA -> cameraStreaming
+        Mode.STATIC -> true
+        Mode.CHECKING -> false
+    }
+
+    private fun updateGameControls() {
+        livesText?.text = getString(R.string.game_hud, gameViewModel.vidas,
+            gameViewModel.escudos, GameViewModel.META,
+            (gameViewModel.tempoRestanteMs + 999L) / 1000L)
+        startButton?.visibility = if (gameViewModel.partidaIniciada) View.GONE else View.VISIBLE
+        targetText?.setText(when {
+            !gameViewModel.partidaIniciada -> R.string.game_rules_summary
+            !sceneReady() -> R.string.game_waiting
+            gameViewModel.objetoConsumido -> R.string.next_object
+            gameViewModel.objetoAtual == GameViewModel.Objeto.ESCUDO -> R.string.collect_shield
+            else -> R.string.avoid_sword
+        })
+    }
+
+    private fun startGameLoop() {
+        gameJob = viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                lastGameTickMs = null
+                try {
+                    while (isActive && !gameViewModel.jogoEncerrado) {
+                        advanceClock(SystemClock.elapsedRealtime())
+                        updateGameControls()
+                        delay(100L)
+                    }
+                } finally {
+                    lastGameTickMs = null
                 }
-                .show()
+            }
         }
     }
 
-    private fun perderVida() {
-        if (!gameViewModel.perderVida(SystemClock.elapsedRealtime())) return
-        livesText?.text = getString(R.string.remaining_lives, gameViewModel.vidas)
-        if (gameViewModel.jogoEncerrado) {
-            encerrarJogo(getString(R.string.game_over_reason))
+    private fun advanceClock(now: Long) {
+        val previous = lastGameTickMs
+        lastGameTickMs = now
+        if (!gameViewModel.partidaIniciada || gameViewModel.jogoEncerrado || !sceneReady()) {
+            lastGameTickMs = null
+            return
         }
+        val roundBefore = gameViewModel.rodada
+        if (previous != null) gameViewModel.avancarTempo(now - previous)
+        if (gameViewModel.jogoEncerrado) {
+            encerrarJogo(motivoDoResultado())
+        } else if (roundBefore != gameViewModel.rodada) {
+            currentModelFile = gameViewModel.objetoAtual.arquivo
+            loadModel(preserveAnchor = true)
+        }
+    }
+
+    private fun tocarObjeto(round: Int) {
+        if (!viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) ||
+            !sceneReady()) return
+        val now = SystemClock.elapsedRealtime()
+        // Atualiza o prazo antes do toque: não permite pontuar depois dos 30 segundos.
+        advanceClock(now)
+        val effect = gameViewModel.tocarObjeto(round, now)
+        if (effect != GameViewModel.Toque.IGNORADO) {
+            modelNode?.isVisible = false
+            modelNode?.isTouchable = false
+            updateGameControls()
+        }
+        if (gameViewModel.jogoEncerrado) encerrarJogo(motivoDoResultado())
     }
 
     private fun encerrarJogo(motivo: String) {
@@ -203,10 +284,14 @@ class CameraFragment : Fragment() {
         modelNode?.isEditable = false
         modelNode?.isTouchable = false
         availabilityJob?.cancel()
+        gameJob?.cancel()
         // Retira câmera, gestos, carregamentos e watchdogs antes de abrir a tela final.
         clearScene()
         startActivity(Intent(requireContext(), GameOverActivity::class.java).apply {
             putExtra(GameOverActivity.EXTRA_MOTIVO, motivo)
+            putExtra(GameOverActivity.EXTRA_VITORIA,
+                gameViewModel.resultado == GameViewModel.Resultado.VITORIA)
+            putExtra(GameOverActivity.EXTRA_ESCUDOS, gameViewModel.escudos)
         })
         requireActivity().finish()
     }
@@ -229,16 +314,22 @@ class CameraFragment : Fragment() {
         }
 
         livesText = TextView(requireContext()).apply {
-            text = getString(R.string.remaining_lives, gameViewModel.vidas)
-            textSize = 18f
+            text = getString(R.string.game_hud, gameViewModel.vidas, gameViewModel.escudos,
+                GameViewModel.META, (gameViewModel.tempoRestanteMs + 999L) / 1000L)
+            textSize = 16f
             setTextColor(Color.WHITE)
         }
         panel.addView(livesText)
-        panel.addView(TextView(requireContext()).apply {
-            setText(R.string.game_rules_summary)
-            textSize = 13f
-            setTextColor(Color.WHITE)
-        })
+        targetText = TextView(requireContext()).apply {
+            textSize = 14f
+            setTextColor(Color.rgb(166, 243, 208))
+        }
+        panel.addView(targetText)
+        startButton = Button(requireContext()).apply {
+            setText(R.string.start_hunt)
+            setOnClickListener { mostrarRegras() }
+        }
+        panel.addView(startButton)
         panel.addView(statusText)
 
         layer.addView(
@@ -263,6 +354,7 @@ class CameraFragment : Fragment() {
         )
 
         overlay = layer
+        updateGameControls()
 
         parent.findViewById<View>(R.id.titleImage)?.bringToFront()
         placeButton?.bringToFront()
@@ -696,7 +788,7 @@ class CameraFragment : Fragment() {
         }
     }
 
-    private fun loadModel() {
+    private fun loadModel(preserveAnchor: Boolean = false) {
         if (gameViewModel.jogoEncerrado) return
         val scene = sceneView ?: return
         val location = modelLocation(currentModelFile)
@@ -710,45 +802,41 @@ class CameraFragment : Fragment() {
         }
 
         loadJob?.cancel()
-        removeModel()
+        lastGameTickMs = null
+        removeModel(preserveAnchor)
 
         val expected = generation
         val expectedModel = ++modelGeneration
         val isAr = mode == Mode.AR
         val fileName = currentModelFile
+        val round = gameViewModel.rodada
 
         placeButton?.isEnabled = false
 
         loadJob = viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val instance =
-                    scene.modelLoader.loadModelInstance(location)
-
-                if (
-                    expected != generation ||
-                    expectedModel != modelGeneration ||
-                    sceneView !== scene
-                ) {
-                    return@launch
-                }
-
-                if (instance == null) {
-                    statusText?.text = "Não foi possível abrir o modelo."
-                    return@launch
-                }
-
-                val node = ModelNode(
-                    modelInstance = instance,
-                    scaleToUnits = if (isAr) 0.5f else 1.5f,
-                    centerOrigin = Position(0f, 0f, 0f)
-                )
-
-                node.isEditable = true
-                node.onSingleTapConfirmed = {
-                    // O próprio nó 3D recebe o toque por hit test do SceneView.
-                    if (!gameViewModel.jogoEncerrado && fileName == "espada.glb") {
-                        perderVida()
+                val node = modelCache[fileName] ?: run {
+                    val instance = scene.modelLoader.loadModelInstance(location)
+                    if (expected != generation || expectedModel != modelGeneration ||
+                        sceneView !== scene || gameViewModel.jogoEncerrado) return@launch
+                    if (instance == null) {
+                        statusText?.setText(R.string.model_load_failed)
+                        return@launch
                     }
+                    ModelNode(
+                        modelInstance = instance,
+                        scaleToUnits = if (isAr) 0.5f else 1.5f,
+                        centerOrigin = Position(0f, 0f, 0f)
+                    ).also { modelCache[fileName] = it }
+                }
+                if (gameViewModel.partidaIniciada) node.position = Position(0f, 0f, 0f)
+                node.isEditable = !gameViewModel.partidaIniciada
+                node.isScaleEditable = false
+                node.isVisible = !gameViewModel.partidaIniciada || !gameViewModel.objetoConsumido
+                node.isTouchable = node.isVisible
+                node.onSingleTapConfirmed = {
+                    if (expected == generation && expectedModel == modelGeneration &&
+                        !gameViewModel.jogoEncerrado) tocarObjeto(round)
                     true
                 }
                 modelNode = node
@@ -756,7 +844,11 @@ class CameraFragment : Fragment() {
                 if (!isAr) {
                     scene.addChildNode(node)
                     placeButton?.isEnabled = true
+                } else if (anchorNode != null) {
+                    anchorNode?.addChildNode(node)
+                    placeButton?.isEnabled = true
                 }
+                updateGameControls()
 
             } catch (e: CancellationException) {
                 throw e
@@ -828,18 +920,19 @@ class CameraFragment : Fragment() {
         }
     }
 
-    private fun removeModel() {
+    private fun removeModel(preserveAnchor: Boolean = false) {
         val scene = sceneView
 
         modelNode?.let { model ->
             runCatching {
                 anchorNode?.removeChildNode(model)
                 scene?.removeChildNode(model)
-                model.destroy()
+                // Os dois modelos são reutilizados; liberados em clearScene().
             }
         }
 
         modelNode = null
+        if (preserveAnchor) return
 
         anchorNode?.let { anchor ->
             runCatching {
@@ -858,6 +951,7 @@ class CameraFragment : Fragment() {
     }
 
     private fun clearScene() {
+        lastGameTickMs = null
         generation++
         modelGeneration++
 
@@ -883,6 +977,8 @@ class CameraFragment : Fragment() {
         cameraStreaming = false
 
         removeModel()
+        modelCache.values.forEach { runCatching { it.destroy() } }
+        modelCache.clear()
 
         sceneView?.let { scene ->
             runCatching {
@@ -909,6 +1005,8 @@ class CameraFragment : Fragment() {
     override fun onDestroyView() {
         availabilityJob?.cancel()
         availabilityJob = null
+        gameJob?.cancel()
+        gameJob = null
 
         clearScene()
 
@@ -919,6 +1017,8 @@ class CameraFragment : Fragment() {
         rulesDialog?.dismiss()
         rulesDialog = null
         livesText = null
+        targetText = null
+        startButton = null
         overlay = null
         statusText = null
         placeButton = null

@@ -15,6 +15,8 @@ import com.ifpr.androidapptemplatear.R
 class GameOverActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_MOTIVO = "motivo"
+        const val EXTRA_VITORIA = "vitoria"
+        const val EXTRA_ESCUDOS = "escudos"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,9 +30,19 @@ class GameOverActivity : AppCompatActivity() {
             setPadding(padding, padding, padding, padding)
         }
         painel.addView(TextView(this).apply {
-            text = getString(R.string.game_over_message, motivo)
+            text = if (intent.getBooleanExtra(EXTRA_VITORIA, false)) {
+                getString(R.string.victory_message, motivo)
+            } else {
+                getString(R.string.game_over_message, motivo)
+            }
             textSize = 28f
             gravity = Gravity.CENTER
+        })
+        painel.addView(TextView(this).apply {
+            text = getString(R.string.final_score, intent.getIntExtra(EXTRA_ESCUDOS, 0))
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setPadding(0, padding, 0, padding)
         })
         painel.addView(Button(this).apply {
             setText(R.string.play_again)

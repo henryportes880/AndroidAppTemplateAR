@@ -22,7 +22,7 @@ class GameFlowTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 val game = ViewModelProvider(activity)[GameViewModel::class.java]
-                // O diálogo continua aberto para não depender de câmera neste teste.
+                // Prepara o estado de dano diretamente para testar a retenção na recriação.
                 game.iniciarPartida()
                 assertTrue(game.perderVida(1000L))
             }
@@ -32,7 +32,7 @@ class GameFlowTest {
                 assertEquals(2, game.vidas)
                 assertFalse(game.perderVida(1500L))
             }
-            onView(withText("Vidas: 2 / 3")).check(matches(isDisplayed()))
+            onView(withText(org.hamcrest.Matchers.startsWith("Vidas: 2/3"))).check(matches(isDisplayed()))
         }
     }
 
@@ -44,7 +44,20 @@ class GameFlowTest {
             scenario.recreate()
             onView(withText("GAME OVER\nSuas vidas acabaram.")).check(matches(isDisplayed()))
             onView(withText(R.string.play_again)).perform(click())
-            onView(withText(R.string.game_rules_title)).check(matches(isDisplayed()))
+            onView(withText(R.string.start_hunt)).check(matches(isDisplayed()))
+        }
+    }
+
+    @Test fun vitoriaMostraMetaAtingida() {
+        val intent = Intent(ApplicationProvider.getApplicationContext(), GameOverActivity::class.java)
+            .putExtra(GameOverActivity.EXTRA_MOTIVO, "Você recuperou os 5 escudos!")
+            .putExtra(GameOverActivity.EXTRA_VITORIA, true)
+            .putExtra(GameOverActivity.EXTRA_ESCUDOS, 5)
+        ActivityScenario.launch<GameOverActivity>(intent).use {
+            onView(withText("VITÓRIA!\nVocê recuperou os 5 escudos!"))
+                .check(matches(isDisplayed()))
+            onView(withText("Escudos recuperados: 5 / 5")).check(matches(isDisplayed()))
+            onView(withText(R.string.play_again)).check(matches(isDisplayed()))
         }
     }
 }

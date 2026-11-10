@@ -1,121 +1,132 @@
-# Caçadores de Mito — AndroidAppTemplateAR
+# Caçadores de Mito
 
-Atividade de Desenvolvimento de Aplicativos: **Jogo em Realidade Aumentada – Game Over**,
-Jailton Coelho, 2026 (PDF de 18 páginas, Aula 2).
+Jogo Android de reflexo em realidade aumentada, construído sobre o
+AndroidAppTemplateAR e a integração **feature-sceneview / SceneView 2.2.1**.
 
-Branch da atividade: [`03-11.2`](https://github.com/henryportes880/AndroidAppTemplateAR/tree/03-11.2).
+Branch: [`03-11.2`](https://github.com/henryportes880/AndroidAppTemplateAR/tree/03-11.2).
 
-## Regra implementada
+## Como jogar
 
-O jogador começa com três vidas. A **espada** é o objeto perigoso: tocar no seu
-modelo 3D retira uma vida, respeitando um intervalo mínimo de um segundo entre
-danos. A detecção usa o hit test e o evento de toque do próprio nó do SceneView;
-tocar no fundo ou nos outros modelos não retira vidas. Em AR, é necessário
-posicionar o modelo em uma superfície primeiro.
+1. Abra a aba **Jogar**. Em AR, aponte para uma mesa ou chão e toque em
+   **Posicionar**. O aplicativo também preserva os modos de câmera/3D da base.
+2. Toque em **Iniciar caça**, leia as regras e confirme **Iniciar partida**.
+3. **Recupere 5 escudos em 30 segundos.** Um objeto aparece por vez, alternando
+   entre escudo e espada a cada 2 segundos de jogo.
+4. Toque no **escudo** para coletar. Evite a **espada**: tocá-la tira uma das suas
+   três vidas. Cada aparição só conta uma vez; o objeto desaparece após o toque e
+   o próximo aparece na troca programada. Tocar no fundo não produz efeito.
+5. Ao coletar 5 escudos, você vence. Com zero vidas, ou tempo esgotado antes da
+   meta, aparece **Game Over**, informando o motivo e o resultado da coleta.
+6. **Jogar novamente** inicia uma partida nova: 3 vidas, 0 escudos, 30 segundos,
+   escudo inicial e regras antes de começar.
 
-A regra aparece em um diálogo antes de iniciar e em um resumo junto às vidas.
-Com zero vidas, a partida termina, a cena e suas tarefas são encerradas, e
-`GameOverActivity` informa **“Suas vidas acabaram.”**. A Activity da partida é
-finalizada para impedir que Voltar a recupere. **Jogar novamente** cria uma nova
-`MainActivity`, com três vidas, regra inicial e a espada reposta na cena.
+O relógio só corre com a tela em primeiro plano, modelo carregado e cena pronta;
+em AR, o objeto deve estar ancorado e a câmera rastreando. Trocar de aba, girar o
+aparelho, minimizar ou reposicionar pausa o tempo durante a transição, sem repor
+vidas, escudos ou tempo. É preciso reposicionar após recriar a cena AR.
 
-Os modelos anteriores, a seleção na outra aba, o posicionamento, o reposicionamento
-e os modos com câmera e 3D foram preservados. O modelo inicial agora é a espada
-para que a condição de derrota esteja acessível ao iniciar.
+A aba **Modelos** mantém os arquivos anteriores para exploração antes da partida.
+Durante uma caça, ela não permite substituir o alvo e alterar a regra de coleta.
+Os objetos do jogo mantêm a mesma âncora AR entre as rodadas. Escudo e espada são
+reutilizados na mesma cena, evitando carregar os GLBs a cada aparição. Os gestos
+de edição ficam disponíveis na exploração e são desativados nos alvos da caça.
 
-## Revisão antes das alterações
+## Atividade do professor e revisão inicial
 
-O repositório foi clonado neste ambiente; não havia checkout prévio com alterações
-locais acessíveis. Após a confirmação da branch, a revisão e a implementação usaram
-`03-11.2`, originalmente no commit `99709e1`. O estado inicial estava limpo. Não
-foram encontrados arquivos `AGENTS.md`; o README anterior continha somente o nome
-do repositório. A integração `feature-sceneview` já estava presente nessa branch.
-Alterações eventualmente existentes apenas no computador do aluno não puderam ser
-inspecionadas neste ambiente.
+Referência: **Desenvolvimento de Aplicativos — Jogo em Realidade Aumentada –
+Game Over**, Jailton Coelho, 2026, Aula 2 (18 páginas).
 
-| Requisito do PDF | Classificação inicial no código | Resultado da implementação |
+O repositório foi clonado neste ambiente. Não havia alterações locais acessíveis.
+A branch confirmada pelo aluno foi `03-11.2`, originalmente em `99709e1`.
+Não foram encontrados arquivos `AGENTS.md`; o README original continha apenas
+o nome do repositório. Arquivos eventualmente existentes apenas no computador do
+aluno não puderam ser inspecionados. A integração da cena já estava presente;
+as regras e a tela final estavam ausentes. Os modelos e a base de visualização
+foram preservados. A atualização do jogo acrescenta uma meta de coleta e um
+prazo, dando propósito ao uso dos escudos e espadas existentes.
+
+| Requisito do PDF | Situação inicial em `99709e1` | Implementação atual |
 | --- | --- | --- |
-| Usar a versão integrada com feature-sceneview (p. 6) | Concluído no código; não testado em Android | Preservada a integração SceneView 2.2.1 |
-| Definir ao menos uma condição de derrota (p. 2–4, 18) | Ainda não implementado | Três contatos com a espada encerram a partida |
-| Explicar a regra antes da partida (p. 4) | Ainda não implementado | Diálogo antes de iniciar e resumo na interface |
-| Estado da partida e vidas na interface (p. 7) | Ainda não implementado | GameViewModel e contador de vidas |
-| Dano com intervalo de 1 s, se usada a regra das vidas (p. 5, 8) | Ainda não implementado | Relógio monotônico e bloqueio de danos repetidos |
-| Ligar a derrota a uma interação real (p. 9) | Ainda não implementado | Toque no nó 3D da espada |
-| Encerrar e bloquear ações, tarefas e sons (p. 10–11) | Ainda não implementado | Bloqueios, cancelamento de jobs, destruição da cena e liberação da câmera; não havia sons de partida |
-| GameOverActivity com título, motivo e botão (p. 12–14) | Ainda não implementado | Activity no mesmo pacote de CameraFragment, interface criada por código |
-| Registrar Activity não exportada (p. 15) | Ainda não implementado | Registro no AndroidManifest.xml |
-| Reiniciar estado e repor objetos (p. 16) | Ainda não implementado | Activity e ViewModels novos; modelo inicial recarregado; não havia pontuação, cronômetro ou coleta |
-| Rotação não recuperar vidas (p. 16) | Ainda não implementado | ViewModel no escopo da Activity conserva vidas e intervalo entre danos, inclusive ao trocar de aba |
-| Tela única e Voltar não retomar partida (p. 17) | Ainda não implementado | Proteção contra abertura repetida e finish da Activity anterior |
-| Testar o fluxo completo no celular (p. 17–18) | Pendente | Exige o roteiro abaixo em dispositivo físico |
-| Entregar branch, vídeo e descrição (p. 18) | Incompleto: branch existia, funcionalidade ausente | Descrição neste README; vídeo e postagem no Classroom dependem do aluno |
+| Usar a integração feature-sceneview (p. 6) | Concluído no código | Preservado SceneView 2.2.1 e fallback de câmera/3D |
+| Definir e explicar a derrota (p. 2–4) | Ainda não implementado | Zero vidas ou prazo de 30 s sem coletar 5 escudos; regras antes do início |
+| Mostrar vidas e controlar o estado (p. 7) | Ainda não implementado | HUD com vidas, escudos e tempo; GameViewModel |
+| Intervalo de 1 s entre danos, se usada a regra das vidas (p. 5, 8) | Ainda não implementado | Intervalo mantido, além de permitir um dano por aparição da espada |
+| Interação real ligada à derrota (p. 9) | Ainda não implementado | Hit test/toque no nó 3D; espada tira vida, escudo pontua |
+| Encerrar ações e tarefas (p. 10–11) | Ainda não implementado | Bloqueia ações e cancela relógio, carregamentos e watchdogs; libera cena e câmera; não há sons de partida |
+| GameOverActivity com motivo e botão (p. 12–14) | Ainda não implementado | Mesma classe/pacote; interface por código; derrota e vitória mostram coleta e reinício |
+| Activity não exportada no Manifest (p. 15) | Ainda não implementado | Registrada com exported=false |
+| Reiniciar todo o estado e repor objetos (p. 16) | Ainda não implementado | Nova MainActivity, novos ViewModels e cena nova |
+| Girar não recuperar vidas (p. 16) | Ainda não implementado | Estado no escopo da Activity: mantém vidas, coleta, tempo e rodada |
+| Tela única e Voltar não recuperar partida (p. 17) | Ainda não implementado | Guarda contra abertura repetida e finalização da Activity anterior |
+| Testar no celular (p. 17–18) | Pendente | Ainda requer o roteiro físico abaixo |
+| Entregar branch, vídeo e regra (p. 18) | Incompleto: branch existia | Regra e branch documentadas; gravação e postagem no Classroom pendentes |
 
-As três vidas são o exemplo do professor; o requisito geral permite outra condição
-de derrota coerente com o jogo. Aqui foi escolhido seguir o exemplo com interação
-por toque, explicitamente permitida na página 9. Não foram acrescentados pontuação,
-coleta, cronômetro, Firebase ou outras regras que a atividade não exige.
+O PDF permite escolher uma condição coerente com o jogo. Três vidas são um
+exemplo, e o toque em objeto perigoso é permitido na página 9. Não foi necessário
+configurar Firebase, obter novos modelos ou trocar as tecnologias do projeto.
 
 ## Validação
 
-A análise de código não equivale a um teste funcionando no celular.
+Validação final executada com JDK 17 e SDK 36:
 
-- `assembleDebug`: passou, APK debug gerado em compilação limpa com JDK 17.
-- `testDebugUnitTest`: passou, 6 testes no total (5 novos e 1 preexistente), sem falhas.
-- `lintDebug`: passou, 0 erros e 54 avisos nas partes preexistentes (textos, recursos,
-  catálogo e versões de dependências); não foram ocultados ou desativados.
-- `assembleDebugAndroidTest`: passou; APK de testes Android gerado. Execução
-  desses testes em Android permanece pendente.
-- Testes Android (`GameFlowTest`): preparados, mas não executados sem dispositivo.
-- Toque no modelo, AR/câmera, aparência, rotação, botão Voltar e reinício reais:
-  ainda precisam de teste em Android. O ADB não encontrou dispositivos conectados;
-  não há emulador instalado nem `/dev/kvm` disponível neste ambiente.
+- `assembleDebug`: passou; APK gerado.
+- `testDebugUnitTest`: passou, 13 testes no total, sem falhas (12 da lógica do
+  jogo e 1 preexistente). Cobrem vitória, as duas derrotas, coleta única, toques
+  atrasados, alternância de objetos, prazo e bloqueio após o encerramento.
+- `lintDebug`: passou, 0 erros e 53 avisos nas partes preexistentes do projeto
+  (recursos, textos e dependências). Nenhum aviso foi ocultado.
+- `assembleDebugAndroidTest`: passou. Isso comprova a compilação dos testes
+  Android, não a execução deles em um dispositivo.
 
-Os testes unitários novos cobrem estado inicial, intervalo de 1 s (inclusive o
-primeiro dano no tempo zero), derrota no terceiro dano, bloqueio após a derrota,
-reentrada sem recuperar vidas e estado novo de uma nova partida. Os testes Android
-cobrem retenção do estado durante recriação da Activity e mensagem/reinício da tela
-final; não substituem o teste do toque e do rastreamento físico.
+Análise de código, testes unitários e compilação não comprovam que o AR funciona
+em um celular. Não há dispositivo conectado ao ADB, emulador instalado ou
+`/dev/kvm` disponível neste ambiente. Os testes Android foram preparados para
+recriação da Activity, mensagem final, reinício e vitória, mas precisam de um
+Android para serem executados.
 
 ## Executar
 
-1. Faça checkout da branch `03-11.2` e abra o projeto no Android Studio.
-2. Use JDK 17, Android SDK 36 e Build Tools 35.0.0. Sincronize o Gradle.
-3. Conecte um celular com Android 7.0/API 24 ou superior, com depuração USB ativada,
-   selecione o módulo `app` e execute **Run**.
-4. Leia a regra e toque em **Iniciar partida**. Autorize a câmera.
-   Em celular compatível com ARCore e Google Play Services for AR instalado,
-   aponte para uma mesa ou chão e toque em **Posicionar**. O projeto preserva o
-   fallback de câmera/3D para ambientes sem ARCore ou sem permissão de câmera.
-
-Pelo terminal (JDK e SDK configurados):
+Abra esta branch no Android Studio, use **JDK 17**, **SDK 36**, Build Tools 35.0.0
+e execute o módulo `app` em Android 7.0/API 24 ou superior.
+Para AR físico, use celular compatível com ARCore e Google Play Services for AR
+instalado; autorize a câmera. Os modos de câmera/3D são alternativas de
+visualização e não comprovam o rastreamento AR.
 
 ```sh
 bash gradlew assembleDebug testDebugUnitTest lintDebug assembleDebugAndroidTest
+# Com Android conectado e depuração USB ativada:
 bash gradlew installDebug
-# Com um dispositivo/emulador conectado, para os testes Android:
 bash gradlew connectedDebugAndroidTest
 ```
 
-APK gerado: `app/build/outputs/apk/debug/app-debug.apk` (não versionado).
-Não é necessário configurar Firebase para este fluxo de Game Over.
+APK: `app/build/outputs/apk/debug/app-debug.apk` (não versionado).
+O APK Android não pode ser instalado no iPhone.
 
-## Roteiro curto de teste físico e vídeo
+## Roteiro de teste e vídeo real
 
-1. Inicie: confira a regra antes da partida e **3 vidas** na interface.
-2. Posicione a espada em AR (ou use a visualização disponível). Toque no fundo e
-   confirme que não há dano. Toque na espada: devem restar **2 vidas**.
-3. Repita um toque em menos de 1 s: as vidas devem continuar em 2. Espere pelo
-   menos 1 s após o dano anterior e toque: deve restar **1 vida**.
-4. Gire o aparelho e alterne entre as abas: a vida restante deve continuar em 1.
-   Se a cena for recriada, posicione a espada novamente. Exiba o escudo: tocar nele
-   não deve retirar vida. Volte à espada.
-5. Após o intervalo, toque na espada: deve abrir uma única tela **GAME OVER** com
-   **Suas vidas acabaram.** e **Jogar novamente**. A cena/câmera anterior deve parar.
-6. Toque em **Jogar novamente**: deve aparecer uma nova partida com regra e 3 vidas.
-   Provoque outra derrota e pressione **Voltar**: a partida encerrada não deve voltar.
+- **Preparação:** abrir, posicionar, iniciar e conferir 3 vidas, 0/5 escudos e 30 s.
+  O prazo não deve diminuir durante carregamento ou posicionamento.
+- **Coleta/vitória:** tocar somente nos escudos de aparições diferentes. Tocar
+  repetidamente no mesmo objeto não deve duplicar a coleta. No quinto, conferir
+  Vitória e 5/5; reiniciar e conferir o estado inicial.
+- **Derrota por vidas:** iniciar outra partida e tocar nas três primeiras
+  espadas que aparecerem. Conferir 2, 1 e 0 vidas, Game Over e o motivo.
+- **Derrota por tempo:** reiniciar e não coletar escudos; após 30 segundos de
+  jogo ativo, conferir Game Over por tempo, mesmo ainda tendo vidas.
+- **Estado/câmera:** minimizar, girar, alternar abas e reposicionar. Conferir
+  pausa nas transições, sem recuperar recursos. Em AR, conferir que a troca de
+  escudo para espada mantém a posição ancorada.
+- **Encerramento:** verificar que câmera e objetos param, só há uma tela final
+  e Voltar não reabre a partida encerrada. Repetir o reinício.
 
-Grave um vídeo curto mostrando a redução das vidas, a derrota, o motivo e o
-reinício com três vidas. Publique no Classroom o link desta branch, o vídeo e,
-como descrição, o parágrafo da seção **Regra implementada**. Teste em celular
-compatível com ARCore para demonstrar realidade aumentada física; um teste em
-modo 3D não comprova o rastreamento AR.
+Grave a execução real de uma derrota e do reinício para o Classroom. Uma
+simulação ilustrativa não substitui esse teste ou a gravação do aplicativo.
+
+Descrição pronta para entregar:
+
+> O objetivo é recuperar 5 escudos em 30 segundos. Escudos e espadas alternam
+> automaticamente a cada 2 segundos. Tocar no escudo aumenta a coleta; tocar na
+> espada retira uma das 3 vidas. Cada aparição só conta uma vez. A partida termina
+> quando as vidas acabam ou o tempo esgota antes da meta. O Game Over informa o
+> motivo, interrompe as ações e permite reiniciar com o estado inicial. Ao atingir
+> a meta, a tela final mostra vitória.
