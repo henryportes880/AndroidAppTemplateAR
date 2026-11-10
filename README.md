@@ -3,7 +3,7 @@
 Jogo Android de reflexo em realidade aumentada, construído sobre o
 AndroidAppTemplateAR e a integração **feature-sceneview / SceneView 2.2.1**.
 
-Branch: [`03-11.2`](https://github.com/henryportes880/AndroidAppTemplateAR/tree/03-11.2).
+Branch da entrega de 10/11: [`10/11`](https://github.com/henryportes880/AndroidAppTemplateAR/tree/10/11).
 
 ## Como jogar
 
