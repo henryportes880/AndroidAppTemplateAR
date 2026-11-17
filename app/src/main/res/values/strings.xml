@@ -12,7 +12,7 @@
     <string name="change">Modelos</string>
     <string name="profile">profile</string>
     <string name="game_rules_title">Caçadores de Mito — Regras</string>
-    <string name="game_rules">Recupere 5 escudos em 30 segundos! Escudos e espadas alternam a cada 2 segundos. Toque no escudo para coletar; evite a espada, que retira 1 das suas 3 vidas. Cada objeto só conta uma vez. Você vence ao recuperar 5 escudos e perde se as vidas ou o tempo acabarem. Em AR, posicione o objeto antes de jogar. O tempo pausa enquanto a cena não estiver pronta ou o aplicativo estiver fora de primeiro plano.</string>
+    <string name="game_rules">Recupere 5 escudos em 30 segundos! Escudos e espadas alternam a cada 2 segundos. Toque no escudo para coletar; evite a espada, que retira 1 das suas 3 vidas. Cada objeto só conta uma vez. Você vence ao recuperar 5 escudos e perde se as vidas ou o tempo acabarem. Em AR, posicione o objeto antes de jogar. O tempo pausa enquanto a cena não estiver pronta ou o aplicativo estiver fora de primeiro plano.\n\nAs descobertas por localização valem 10 pontos por arquivo novo e não substituem a coleta de escudos. Esta nova caça zera os pontos da exploração. Não se desloque com pressa para jogar.</string>
     <string name="game_rules_summary">Recupere 5 escudos em 30 s. Evite as espadas!</string>
     <string name="start_hunt">Iniciar caça</string>
     <string name="game_hud">Vidas: %1$d/3 · Escudos: %2$d/%3$d · %4$ds</string>
@@ -31,4 +31,18 @@
     <string name="game_over_default_reason">A partida terminou.</string>
     <string name="game_over_message">GAME OVER\n%1$s</string>
     <string name="play_again">Jogar novamente</string>
+    <string name="place_model">Posicionar</string>
+    <string name="discovery_points">Pontos: %1$d</string>
+    <string name="current_address">Endereço atual: %1$s</string>
+    <string name="location_activate">Ative a localização para mostrar seu endereço e descobrir modelos.</string>
+    <string name="location_allow">Permitir localização</string>
+    <string name="location_retry">Tentar localização novamente</string>
+    <string name="location_permission_required">Permita a localização precisa para descobrir modelos próximos.</string>
+    <string name="location_permission_denied">Localização precisa não permitida. Autorize nas configurações do aplicativo para participar dos encontros.</string>
+    <string name="location_disabled">Localização desativada. Ative o GPS do aparelho.</string>
+    <string name="location_waiting">Endereço atual: aguardando localização recente…</string>
+    <string name="location_unavailable">Localização indisponível. Aguarde em uma área aberta e confira se o GPS está ligado.</string>
+    <string name="location_stale">Sinal antigo: aguardando uma posição recente para os encontros.</string>
+    <string name="location_inaccurate">Sinal impreciso: aproxime-se de uma área aberta. Os encontros exigem precisão de até 50 m.</string>
+    <string name="address_unavailable">Endereço atual indisponível. Os encontros continuam se a localização for precisa.</string>
 </resources>

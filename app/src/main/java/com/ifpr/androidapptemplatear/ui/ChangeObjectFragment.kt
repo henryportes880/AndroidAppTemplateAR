@@ -1,6 +1,5 @@
 package com.ifpr.androidapptemplatear.ui
 
-import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.util.TypedValue
@@ -8,11 +7,12 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.core.content.ContextCompat
+import com.google.android.material.button.MaterialButton
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.ifpr.androidapptemplatear.R
@@ -98,7 +98,7 @@ class ChangeObjectFragment : Fragment() {
 
             setTypeface(null, Typeface.BOLD)
 
-            setTextColor(Color.BLACK)
+            setTextColor(ContextCompat.getColor(context, R.color.myth_text))
 
             setPadding(
                 0,
@@ -167,7 +167,7 @@ class ChangeObjectFragment : Fragment() {
                 17f
             )
 
-            setTextColor(Color.DKGRAY)
+            setTextColor(ContextCompat.getColor(context, R.color.myth_text))
 
             layoutParams = LinearLayout.LayoutParams(
                 0,
@@ -176,7 +176,7 @@ class ChangeObjectFragment : Fragment() {
             )
         }
 
-        val botao = Button(requireContext()).apply {
+        val botao = MaterialButton(requireContext()).apply {
 
             text = "Exibir"
 
@@ -229,7 +229,7 @@ class ChangeObjectFragment : Fragment() {
                 bottomMargin = 4
             }
 
-            setBackgroundColor(Color.LTGRAY)
+            setBackgroundColor(ContextCompat.getColor(context, R.color.myth_outline))
         }
 
         container?.addView(divisor)

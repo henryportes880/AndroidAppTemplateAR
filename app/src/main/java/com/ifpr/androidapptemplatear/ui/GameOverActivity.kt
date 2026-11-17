@@ -3,12 +3,13 @@ package com.ifpr.androidapptemplatear.ui
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.content.ContextCompat
+import com.google.android.material.button.MaterialButton
 import com.ifpr.androidapptemplatear.MainActivity
 import com.ifpr.androidapptemplatear.R
 
@@ -17,6 +18,7 @@ class GameOverActivity : AppCompatActivity() {
         const val EXTRA_MOTIVO = "motivo"
         const val EXTRA_VITORIA = "vitoria"
         const val EXTRA_ESCUDOS = "escudos"
+        const val EXTRA_PONTOS = "pontos"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,15 +38,24 @@ class GameOverActivity : AppCompatActivity() {
                 getString(R.string.game_over_message, motivo)
             }
             textSize = 28f
+            setTextColor(ContextCompat.getColor(context, R.color.myth_text))
             gravity = Gravity.CENTER
         })
         painel.addView(TextView(this).apply {
             text = getString(R.string.final_score, intent.getIntExtra(EXTRA_ESCUDOS, 0))
             textSize = 20f
+            setTextColor(ContextCompat.getColor(context, R.color.myth_muted))
             gravity = Gravity.CENTER
             setPadding(0, padding, 0, padding)
         })
-        painel.addView(Button(this).apply {
+        painel.addView(TextView(this).apply {
+            text = getString(R.string.discovery_points, intent.getIntExtra(EXTRA_PONTOS, 0))
+            textSize = 22f
+            setTextColor(ContextCompat.getColor(context, R.color.myth_accent))
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, padding)
+        })
+        painel.addView(MaterialButton(this).apply {
             setText(R.string.play_again)
             setOnClickListener {
                 isEnabled = false

@@ -25,14 +25,19 @@ class GameFlowTest {
                 // Prepara o estado de dano diretamente para testar a retenção na recriação.
                 game.iniciarPartida()
                 assertTrue(game.perderVida(1000L))
+                game.registrarEncontro("escudo.glb")
             }
             scenario.recreate()
             scenario.onActivity { activity ->
                 val game = ViewModelProvider(activity)[GameViewModel::class.java]
                 assertEquals(2, game.vidas)
                 assertFalse(game.perderVida(1500L))
+                assertEquals(10, game.pontuacao)
+                assertFalse(game.registrarEncontro("escudo.glb"))
             }
             onView(withText(org.hamcrest.Matchers.startsWith("Vidas: 2/3"))).check(matches(isDisplayed()))
+            onView(withId(R.id.textPontuacao)).check(matches(withText("Pontos: 10")))
+            onView(withId(R.id.textEndereco)).check(matches(isDisplayed()))
         }
     }
 

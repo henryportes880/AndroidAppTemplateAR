@@ -1,7 +1,44 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+<resources>
+    <style name="Theme.Biologia" parent="Base.Theme.Biologia" />
     <style name="Base.Theme.Biologia" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/myth_primary</item>
+        <item name="colorPrimaryVariant">@color/myth_primary_pressed</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/myth_accent</item>
+        <item name="colorOnSecondary">@color/myth_background</item>
+        <item name="colorSurface">@color/myth_surface</item>
+        <item name="colorOnSurface">@color/myth_text</item>
+        <item name="android:colorBackground">@color/myth_background</item>
+        <item name="android:windowBackground">@color/myth_background</item>
+        <item name="android:textColorPrimary">@color/myth_text</item>
+        <item name="android:textColorSecondary">@color/myth_muted</item>
+        <item name="android:statusBarColor">@color/myth_background</item>
+        <item name="android:navigationBarColor">@color/myth_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="materialButtonStyle">@style/Widget.Cacadores.Button</item>
+    </style>
+    <style name="Widget.Cacadores.Button" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/button_primary_tint</item>
+        <item name="android:textColor">@color/button_text</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:insetTop">4dp</item>
+        <item name="android:insetBottom">4dp</item>
+    </style>
+    <style name="Widget.Cacadores.PlaceButton" parent="Widget.MaterialComponents.ExtendedFloatingActionButton">
+        <item name="backgroundTint">@color/button_primary_tint</item>
+        <item name="android:textColor">@color/button_text</item>
+        <item name="iconTint">@color/button_text</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.Cacadores.Button</item>
+    </style>
+    <style name="ShapeAppearance.Cacadores.Button" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
     </style>
 </resources>

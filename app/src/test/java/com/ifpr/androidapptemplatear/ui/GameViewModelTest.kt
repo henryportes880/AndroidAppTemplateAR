@@ -4,6 +4,67 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GameViewModelTest {
+    @Test fun modelosNovosSomamDezEArquivoRepetidoNaoPontua() {
+        val game = GameViewModel()
+        game.iniciarPartida()
+        assertTrue(game.registrarEncontro("escudo.glb"))
+        assertEquals(10, game.pontuacao)
+        repeat(20) { assertFalse(game.registrarEncontro("escudo.glb")) }
+        assertTrue(game.registrarEncontro("espada.glb"))
+        assertEquals(20, game.pontuacao)
+        assertFalse(game.registrarEncontro(""))
+        assertEquals(20, game.pontuacao)
+    }
+
+    @Test fun outraVisitaAoMesmoModeloNaoPontuaMasOutroModeloPontua() {
+        val game = GameViewModel()
+        game.iniciarPartida()
+        assertEquals("catedral", game.visitasGeograficas.verificar(mapOf("catedral" to 80f), 0, 10f))
+        game.registrarEncontro("escudo.glb")
+        game.visitasGeograficas.verificar(mapOf("catedral" to 126f), 0, 10f)
+        assertEquals("catedral", game.visitasGeograficas.verificar(mapOf("catedral" to 80f), 0, 10f))
+        assertFalse(game.registrarEncontro("escudo.glb"))
+        assertEquals(10, game.pontuacao)
+        assertTrue(game.registrarEncontro("espada.glb"))
+        assertEquals(20, game.pontuacao)
+    }
+
+    @Test fun iniciarCacaReiniciaExploracaoUmaVezMasNaoRecuperaPartidaEmAndamento() {
+        val game = GameViewModel()
+        game.registrarEncontro("escudo.glb")
+        game.visitasGeograficas.verificar(mapOf("catedral" to 0f), 0, 10f)
+        game.iniciarPartida()
+        assertEquals(0, game.pontuacao)
+        assertNull(game.visitasGeograficas.lugarAtualId)
+        assertTrue(game.registrarEncontro("escudo.glb"))
+        game.iniciarPartida()
+        assertEquals(10, game.pontuacao)
+        assertFalse(game.registrarEncontro("escudo.glb"))
+        val nova = GameViewModel()
+        assertEquals(0, nova.pontuacao)
+        assertTrue(nova.registrarEncontro("escudo.glb"))
+    }
+
+    @Test fun fimPorVidasTempoOuVitoriaBloqueiaNovosPontos() {
+        for (final in GameViewModel.Resultado.entries) {
+            val game = GameViewModel()
+            game.iniciarPartida()
+            game.registrarEncontro("escudo.glb")
+            when (final) {
+                GameViewModel.Resultado.SEM_VIDAS -> listOf(0L, 1000L, 2000L).forEach { game.perderVida(it) }
+                GameViewModel.Resultado.TEMPO_ESGOTADO -> game.avancarTempo(30_000L)
+                GameViewModel.Resultado.VITORIA -> repeat(5) { i ->
+                    if (i > 0) game.avancarTempo(4000L)
+                    game.tocarObjeto(game.rodada, i * 4000L)
+                }
+            }
+            assertEquals(final, game.resultado)
+            assertFalse(game.registrarEncontro("espada.glb"))
+            game.iniciarPartida()
+            assertEquals(10, game.pontuacao)
+        }
+    }
+
     @Test fun partidaComecaComTresVidasEAguardaAsRegras() {
         val game = GameViewModel()
         assertEquals(3, game.vidas)

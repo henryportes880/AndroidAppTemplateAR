@@ -15,6 +15,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -28,6 +29,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.ar.core.ArCoreApk
 import com.google.ar.core.Config
@@ -99,6 +101,8 @@ class CameraFragment : Fragment() {
     private var livesText: TextView? = null
     private var targetText: TextView? = null
     private var startButton: Button? = null
+    private var scoreText: TextView? = null
+    private var locationPanel: LinearLayout? = null
     private var gameJob: Job? = null
     private var lastGameTickMs: Long? = null
     private val modelCache = mutableMapOf<String, ModelNode>()
@@ -185,11 +189,17 @@ class CameraFragment : Fragment() {
         }
 
         checkAvailability()
-        val parent = container?.parent as? ViewGroup
-        if (parent != null) {
-            localizacaoController.conectar(parent) { arquivo ->
-                if (!gameViewModel.jogoEncerrado && !gameViewModel.partidaIniciada) {
-                    sharedViewModel.selectModel(arquivo)
+        locationPanel?.let { parent ->
+            localizacaoController.conectar(parent, gameViewModel.visitasGeograficas,
+                podeEncontrar = { !gameViewModel.jogoEncerrado },
+                modeloDaCaca = {
+                    if (gameViewModel.partidaIniciada) gameViewModel.objetoAtual.arquivo else null
+                }) { arquivo ->
+                advanceClock(SystemClock.elapsedRealtime())
+                if (!gameViewModel.jogoEncerrado) {
+                    if (!gameViewModel.partidaIniciada) sharedViewModel.selectModel(arquivo)
+                    gameViewModel.registrarEncontro(arquivo)
+                    updateGameControls()
                 }
             }
             placeButton?.bringToFront()
@@ -226,6 +236,7 @@ class CameraFragment : Fragment() {
     }
 
     private fun updateGameControls() {
+        scoreText?.text = getString(R.string.discovery_points, gameViewModel.pontuacao)
         livesText?.text = getString(R.string.game_hud, gameViewModel.vidas,
             gameViewModel.escudos, GameViewModel.META,
             (gameViewModel.tempoRestanteMs + 999L) / 1000L)
@@ -296,6 +307,7 @@ class CameraFragment : Fragment() {
         modelNode?.isTouchable = false
         availabilityJob?.cancel()
         gameJob?.cancel()
+        localizacaoController.encerrar()
         // Retira câmera, gestos, carregamentos e watchdogs antes de abrir a tela final.
         clearScene()
         startActivity(Intent(requireContext(), GameOverActivity::class.java).apply {
@@ -303,6 +315,7 @@ class CameraFragment : Fragment() {
             putExtra(GameOverActivity.EXTRA_VITORIA,
                 gameViewModel.resultado == GameViewModel.Resultado.VITORIA)
             putExtra(GameOverActivity.EXTRA_ESCUDOS, gameViewModel.escudos)
+            putExtra(GameOverActivity.EXTRA_PONTOS, gameViewModel.pontuacao)
         })
         requireActivity().finish()
     }
@@ -314,45 +327,61 @@ class CameraFragment : Fragment() {
 
         val panel = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            setBackgroundColor(Color.argb(190, 25, 30, 35))
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            setBackgroundResource(R.drawable.bg_game_panel)
         }
 
         statusText = TextView(requireContext()).apply {
             text = "Preparando visualização…"
             textSize = 13f
-            setTextColor(Color.WHITE)
+            setTextColor(ContextCompat.getColor(context, R.color.myth_muted))
         }
 
         livesText = TextView(requireContext()).apply {
             text = getString(R.string.game_hud, gameViewModel.vidas, gameViewModel.escudos,
                 GameViewModel.META, (gameViewModel.tempoRestanteMs + 999L) / 1000L)
             textSize = 16f
-            setTextColor(Color.WHITE)
+            setTextColor(ContextCompat.getColor(context, R.color.myth_text))
         }
+        scoreText = TextView(requireContext()).apply {
+            id = R.id.textPontuacao
+            textSize = 20f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(ContextCompat.getColor(context, R.color.myth_accent))
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        panel.addView(scoreText)
+        locationPanel = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL }
+        panel.addView(locationPanel)
         panel.addView(livesText)
         targetText = TextView(requireContext()).apply {
             textSize = 14f
             setTextColor(Color.rgb(166, 243, 208))
         }
         panel.addView(targetText)
-        startButton = Button(requireContext()).apply {
+        startButton = MaterialButton(requireContext()).apply {
             setText(R.string.start_hunt)
             setOnClickListener { mostrarRegras() }
         }
         panel.addView(startButton)
         panel.addView(statusText)
 
+        // O painel pode rolar em paisagem ou com fontes grandes, sem cobrir Posicionar.
+        val scroll = ScrollView(requireContext()).apply {
+            addView(panel)
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+
         layer.addView(
-            panel,
+            scroll,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM
             ).apply {
-                leftMargin = dp(12)
-                rightMargin = dp(12)
-                bottomMargin = dp(85)
+                leftMargin = dp(16)
+                rightMargin = dp(16)
+                bottomMargin = dp(88)
             }
         )
 
@@ -1030,6 +1059,8 @@ class CameraFragment : Fragment() {
         livesText = null
         targetText = null
         startButton = null
+        scoreText = null
+        locationPanel = null
         overlay = null
         statusText = null
         placeButton = null

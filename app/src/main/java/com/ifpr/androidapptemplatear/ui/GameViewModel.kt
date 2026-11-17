@@ -12,6 +12,20 @@ class GameViewModel : ViewModel() {
         const val META = 5
         const val DURACAO_MS = 30_000L
         const val TROCA_MS = 2_000L
+        const val PONTOS_POR_MODELO = 10
+    }
+
+    var pontuacao = 0
+        private set
+    private val modelosEncontrados = mutableSetOf<String>()
+    // A visita e os arquivos encontrados sobrevivem à rotação e à troca de abas.
+    val visitasGeograficas = VisitasGeograficas()
+
+    /** Só o callback geográfico chama este método; escolher um modelo não pontua. */
+    fun registrarEncontro(arquivo: String): Boolean {
+        if (jogoEncerrado || arquivo.isBlank() || !modelosEncontrados.add(arquivo)) return false
+        pontuacao += PONTOS_POR_MODELO
+        return true
     }
 
     var vidas = 3
@@ -35,7 +49,12 @@ class GameViewModel : ViewModel() {
     private var ultimoDano: Long? = null
 
     fun iniciarPartida() {
-        if (!jogoEncerrado) partidaIniciada = true
+        if (!partidaIniciada && !jogoEncerrado) {
+            modelosEncontrados.clear()
+            pontuacao = 0
+            visitasGeograficas.reiniciar()
+            partidaIniciada = true
+        }
     }
 
     /** Só recebe tempo em primeiro plano, com cena pronta e objeto posicionado. */
