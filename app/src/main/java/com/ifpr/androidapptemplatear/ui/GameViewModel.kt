@@ -21,7 +21,25 @@ class GameViewModel : ViewModel() {
     // A visita e os arquivos encontrados sobrevivem à rotação e à troca de abas.
     val visitasGeograficas = VisitasGeograficas()
 
-    /** Só o callback geográfico chama este método; escolher um modelo não pontua. */
+    data class Encontro(val pontoId: String, val arquivo: String, val pontosGanhos: Int)
+
+    /** Uma entrada geográfica válida registra os pontos antes de emitir o modelo para a tela. */
+    fun processarLocalizacao(
+        distancias: Map<String, Float>,
+        idadeMs: Long,
+        precisao: Float?,
+        modelos: List<String>,
+        sortear: (List<String>) -> String = { it.random() }
+    ): Encontro? {
+        if (jogoEncerrado || modelos.isEmpty()) return null
+        val arquivo = if (partidaIniciada) objetoAtual.arquivo else sortear(modelos)
+        if (arquivo !in modelos) return null
+        val pontoId = visitasGeograficas.verificar(distancias, idadeMs, precisao) ?: return null
+        val novo = registrarEncontro(arquivo)
+        return Encontro(pontoId, arquivo, if (novo) PONTOS_POR_MODELO else 0)
+    }
+
+    /** Usado pelo evento geográfico; escolher ou alternar um modelo não chama este método. */
     fun registrarEncontro(arquivo: String): Boolean {
         if (jogoEncerrado || arquivo.isBlank() || !modelosEncontrados.add(arquivo)) return false
         pontuacao += PONTOS_POR_MODELO

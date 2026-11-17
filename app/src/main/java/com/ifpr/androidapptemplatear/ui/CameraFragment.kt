@@ -190,17 +190,14 @@ class CameraFragment : Fragment() {
 
         checkAvailability()
         locationPanel?.let { parent ->
-            localizacaoController.conectar(parent, gameViewModel.visitasGeograficas,
-                podeEncontrar = { !gameViewModel.jogoEncerrado },
-                modeloDaCaca = {
-                    if (gameViewModel.partidaIniciada) gameViewModel.objetoAtual.arquivo else null
-                }) { arquivo ->
+            localizacaoController.conectar(parent) { distancias, idadeMs, precisao, modelos ->
                 advanceClock(SystemClock.elapsedRealtime())
-                if (!gameViewModel.jogoEncerrado) {
-                    if (!gameViewModel.partidaIniciada) sharedViewModel.selectModel(arquivo)
-                    gameViewModel.registrarEncontro(arquivo)
-                    updateGameControls()
+                val encontro = gameViewModel.processarLocalizacao(distancias, idadeMs, precisao, modelos)
+                if (encontro != null && !gameViewModel.partidaIniciada) {
+                    sharedViewModel.selectModel(encontro.arquivo)
                 }
+                updateGameControls()
+                encontro
             }
             placeButton?.bringToFront()
         }
@@ -217,6 +214,8 @@ class CameraFragment : Fragment() {
                 gameViewModel.iniciarPartida()
                 currentModelFile = gameViewModel.objetoAtual.arquivo
                 loadModel(preserveAnchor = true)
+                // O GPS pode não emitir outro evento enquanto o jogador permanece parado.
+                localizacaoController.reavaliarLocalizacao()
                 updateGameControls()
             }
             .show()

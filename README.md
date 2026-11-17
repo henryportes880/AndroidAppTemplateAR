@@ -51,9 +51,11 @@ precisão de um GPS nem as condições de acesso no dia da visita.
 
 - **10 pontos por arquivo de modelo novo.** A chave é o nome exato do arquivo, conforme
   o PDF (páginas 15–18); não o ID do ponto, o toque, o frame ou a instância do objeto.
-- `GameViewModel.registrarEncontro` usa um `Set<String>`: o mesmo arquivo em outro
-  ponto ou visita não aumenta os pontos novamente. Somente o evento geográfico chama
-  essa função. Escolher **Exibir** na aba Modelos ou coletar escudos não concede esses 10 pontos.
+- O evento passa por `GameViewModel.processarLocalizacao`: ele valida a visita geográfica
+  e chama `registrarEncontro` antes de devolver o modelo à câmera. Um `Set<String>` impede
+  somar pelo mesmo arquivo em outro ponto ou visita. Escolher **Exibir**, mostrar o modelo
+  inicial, alternar escudo/espada pelo relógio ou coletar escudos não concede esses 10 pontos.
+  O endereço pode aparecer mesmo longe dos pontos cadastrados; nesse caso, zero é esperado.
 - Os cinco GLBs originais foram preservados: `escudo.glb`, `espada.glb`, `neutrofilo.glb`,
   `plane.glb` e `sofa.glb`. O controlador do professor não tinha associação fixa ponto/modelo:
   sorteava um arquivo da raiz de assets. Essa relação foi preservada na exploração.
@@ -63,12 +65,32 @@ precisão de um GPS nem as condições de acesso no dia da visita.
   pontuação corresponde ao modelo selecionado/alvo, sem criar ou renomear assets.
 - A exploração geográfica começa ao abrir a tela, com zero pontos. A primeira confirmação
   de **Iniciar partida** começa uma caça nova, zera pontos e arquivos encontrados e libera
-  a visita atual. Reexibir a tela ou chamar o início outra vez não zera uma caça em andamento.
+  a visita atual. Em seguida, a câmera reavalia a última posição recebida pelo Android, com
+  os mesmos limites de idade (30 s) e precisão (50 m), para não depender de outro deslocamento
+  do jogador parado. Reexibir a tela ou chamar o início outra vez não zera uma caça em andamento.
 - **Jogar novamente** cria uma Activity/partida nova: repõe pontos, visitas, vidas, escudos e
   tempo. Girar, trocar de aba ou minimizar mantém o estado no ViewModel da Activity.
   A partida não é persistida após o encerramento do processo.
 - Vitória ou Game Over bloqueiam registros e param a localização. A pontuação de descobertas
   também aparece na tela final, separada da quantidade de escudos coletados.
+
+### Correção do fluxo de pontuação
+
+O teste relatado consistiu em autorizar a localização e iniciar a caça, sem confirmar se o
+aparelho estava a até 100 m de um ponto cadastrado. O modelo inicial e os alvos da caça já
+aparecem sem um encontro: essa exibição não deve pontuar, conforme as páginas 14–18 do PDF.
+
+Também havia uma falha no início da caça: ele zerava os pontos e a visita, mas só reavaliava
+um encontro na próxima atualização do provedor, solicitada com deslocamento mínimo de 5 m.
+Quem permanecesse parado podia ficar em zero mesmo tendo uma posição recente dentro do raio.
+A confirmação de início agora reavalia essa posição sem criar outro listener nem inventar coordenadas.
+
+Caminho atual: `onLocationChanged` → distâncias reais → callback da `CameraFragment` →
+`processarLocalizacao` → filtro de visita → registro único por arquivo → seleção do modelo e HUD.
+O registro acontece antes da seleção/exibição, e não depende de tocar em Posicionar ou de frames.
+A interface informa ponto mais próximo e distância quando está fora do raio, entrada com +10,
+modelo reencontrado sem bônus e área já visitada. As regras de escudos, vidas, tempo e Game Over
+não foram modificadas por essa correção.
 
 ### Localização, endereço e ciclo de vida
 
@@ -103,10 +125,14 @@ e **Pontos: N** aparecem juntos nesse painel. Foram tratados os insets das barra
 Verificação executada nesta branch com **JDK 17.0.21**, **Gradle 8.11.1** e **SDK 36**:
 
 - `assembleDebug`: passou; APK de debug gerado.
-- `testDebugUnitTest`: **24 testes passaram, zero falhas/erros** (16 do GameViewModel,
-  7 de visitas geográficas e 1 preexistente). Cobrem +10 no primeiro arquivo, duplicidade,
-  total por arquivos diferentes, reinício, vitória/derrota e limites de distância/precisão/idade.
-- `lintDebug`: passou, **0 erros e 54 avisos**, registrados no relatório em
+- `testDebugUnitTest`: **32 testes passaram, zero falhas/erros** (16 do GameViewModel,
+  7 de visitas geográficas, 8 do evento integrado de localização e 1 preexistente). O teste
+  `EncontroGeograficoTest` percorre a mesma função usada pelo callback da câmera: entrada
+  válida → modelo emitido e total 10; permanência → sem evento extra; mesmo arquivo em outro
+  ponto → total continua 10; arquivo diferente → total 20. Também cobre a reavaliação de posição
+  recente após iniciar a caça, posição antiga/fora do raio, modelo automático sem pontuação,
+  preservação de alvo/vidas/escudos/tempo e bloqueio após Game Over.
+- `lintDebug`: passou, **0 erros e 55 avisos**, registrados no relatório em
   `app/build/reports/lint-results-debug.html`. Não foi criado baseline nem desligado o lint.
   Os avisos incluem dependências, recursos legados sem uso e textos da visualização.
 - `assembleDebugAndroidTest`: passou. A compilação inclui a verificação de retenção de
@@ -151,8 +177,10 @@ O APK de debug fica em `app/build/outputs/apk/debug/app-debug.apk` e não é ver
 
 ### Roteiro curto de validação no Android
 
-- **Primeira descoberta / duplicidade:** entrar em um raio; conferir +10. Permanecer no
-  local e girar a tela: não deve ocorrer outro encontro nem aumentar o total. Escolher um
+- **Primeira descoberta / duplicidade:** entrar em um raio; conferir a mensagem de encontro
+  e +10. Se estiver fora, a tela informa ponto mais próximo/distância e o total continua zero,
+  mesmo que os modelos da caça apareçam. Permanecer no local e girar a tela não deve gerar
+  outro encontro nem aumentar o total. Escolher um
   arquivo na aba Modelos também não deve pontuar.
 - **Outra visita / arquivo novo:** sair mais de 125 m e voltar. Se o arquivo for o mesmo,
   manter o total; se for outro, somar 10. A unicidade é por arquivo em toda a sessão/partida,
@@ -167,7 +195,8 @@ O APK de debug fica em `app/build/outputs/apk/debug/app-debug.apk` e não é ver
   Desligar GPS deve mostrar aviso. Sem Internet/Geocoder, o endereço pode ficar indisponível,
   mas coordenadas precisas ainda podem gerar encontros.
 - **Caça, fim e reinício:** iniciar partida zera a pontuação anterior e mantém a regra de
-  3 vidas, 5 escudos e 30 s. Encontros durante a caça usam o alvo atual, sem alterar escudos,
+  3 vidas, 5 escudos e 30 s. Se já houver uma posição recente e precisa dentro do raio,
+  deve registrar a descoberta da nova partida mesmo parado; reenviar a mesma posição não soma outra vez. Encontros durante a caça usam o alvo atual, sem alterar escudos,
   vidas ou o relógio. Depois de vencer/perder, callbacks não aumentam pontos. Jogar novamente
   começa em zero. Rotação, alternância de abas e retorno do segundo plano não repõem recursos.
 - **Interface:** conferir retrato/paisagem e fonte grande, estados habilitado/desabilitado,

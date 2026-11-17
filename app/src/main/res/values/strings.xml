@@ -45,4 +45,10 @@
     <string name="location_stale">Sinal antigo: aguardando uma posição recente para os encontros.</string>
     <string name="location_inaccurate">Sinal impreciso: aproxime-se de uma área aberta. Os encontros exigem precisão de até 50 m.</string>
     <string name="address_unavailable">Endereço atual indisponível. Os encontros continuam se a localização for precisa.</string>
+    <string name="location_discovery_waiting">Descobertas: aguardando posição precisa perto de um ponto cadastrado. Os modelos da caça não pontuam por aparecerem.</string>
+    <string name="location_discovery_no_models">Descobertas indisponíveis: nenhum modelo cadastrado.</string>
+    <string name="location_discovery_new">Encontrado por localização: %1$s. +%2$d pontos.</string>
+    <string name="location_discovery_repeated">Reencontrado: %1$s. Esse modelo já pontuou nesta partida.</string>
+    <string name="location_discovery_outside">Fora do raio de descoberta (100 m). Mais próximo: %1$s, a %2$d m.</string>
+    <string name="location_discovery_visited">Área já visitada. Saia mais de 125 m antes de voltar para um novo encontro.</string>
 </resources>

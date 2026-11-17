@@ -42,11 +42,9 @@ class LocalizacaoController(private val fragment: Fragment) : DefaultLifecycleOb
     private var painel: LinearLayout? = null
     private var enderecoView: TextView? = null
     private var qualidadeView: TextView? = null
+    private var encontroView: TextView? = null
     private var botao: MaterialButton? = null
-    private var aoEncontrarModelo: ((String) -> Unit)? = null
-    private var podeEncontrar: (() -> Boolean)? = null
-    private var modeloDaCaca: (() -> String?)? = null
-    private var visitas: VisitasGeograficas? = null
+    private var aoLocalizar: ((Map<String, Float>, Long, Float?, List<String>) -> GameViewModel.Encontro?)? = null
     private var modelos = emptyList<String>()
     private var monitorando = false
     private var encerrado = false
@@ -68,17 +66,11 @@ class LocalizacaoController(private val fragment: Fragment) : DefaultLifecycleOb
 
     fun conectar(
         parent: ViewGroup,
-        visitas: VisitasGeograficas,
-        podeEncontrar: () -> Boolean,
-        modeloDaCaca: () -> String?,
-        aoEncontrar: (String) -> Unit
+        aoLocalizar: (Map<String, Float>, Long, Float?, List<String>) -> GameViewModel.Encontro?
     ) {
         check(owner == null) { "O controlador já está conectado a uma tela." }
         val context = fragment.requireContext()
-        this.visitas = visitas
-        this.podeEncontrar = podeEncontrar
-        this.modeloDaCaca = modeloDaCaca
-        aoEncontrarModelo = aoEncontrar
+        this.aoLocalizar = aoLocalizar
         owner = fragment.viewLifecycleOwner
         manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         modelos = context.assets.list("").orEmpty()
@@ -105,6 +97,12 @@ class LocalizacaoController(private val fragment: Fragment) : DefaultLifecycleOb
             setTextColor(ContextCompat.getColor(context, R.color.myth_accent))
             visibility = View.GONE
         }
+        encontroView = TextView(context).apply {
+            setText(R.string.location_discovery_waiting)
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(context, R.color.myth_muted))
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
         botao = MaterialButton(context).apply {
             setText(R.string.location_allow)
             backgroundTintList = ContextCompat.getColorStateList(context, R.color.button_secondary_tint)
@@ -129,6 +127,7 @@ class LocalizacaoController(private val fragment: Fragment) : DefaultLifecycleOb
         }
         novoPainel.addView(enderecoView)
         novoPainel.addView(qualidadeView)
+        novoPainel.addView(encontroView)
         novoPainel.addView(botao)
         parent.addView(novoPainel, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -152,11 +151,9 @@ class LocalizacaoController(private val fragment: Fragment) : DefaultLifecycleOb
         painel = null
         enderecoView = null
         qualidadeView = null
+        encontroView = null
         botao = null
-        aoEncontrarModelo = null
-        podeEncontrar = null
-        modeloDaCaca = null
-        visitas = null
+        aoLocalizar = null
         manager = null
         this.owner = null
     }
@@ -165,6 +162,12 @@ class LocalizacaoController(private val fragment: Fragment) : DefaultLifecycleOb
     fun encerrar() {
         encerrado = true
         parar()
+    }
+
+    /** Reutiliza apenas uma posição recebida pelo GPS; os mesmos filtros de idade/precisão valem. */
+    fun reavaliarLocalizacao() {
+        encontroView?.setText(R.string.location_discovery_waiting)
+        ultimaLocalizacao?.let { onLocationChanged(Location(it)) }
     }
 
     private fun temPermissaoPrecisa(): Boolean {
@@ -246,17 +249,29 @@ class LocalizacaoController(private val fragment: Fragment) : DefaultLifecycleOb
             setText(R.string.location_inaccurate)
             visibility = if (precisa) View.GONE else View.VISIBLE
         }
-        if (podeEncontrar?.invoke() != true || modelos.isEmpty()) return
+        if (!precisa) return
         val distancias = PontosTuristicos.lugares.associate { lugar ->
             val metros = FloatArray(1)
             Location.distanceBetween(location.latitude, location.longitude,
                 lugar.latitude, lugar.longitude, metros)
             lugar.id to metros[0]
         }
-        if (visitas?.verificar(distancias, idadeMs, precisao) == null) return
-        // A exploração sorteia entre os GLBs originais. Na caça, preserva o alvo da rodada.
-        val arquivo = modeloDaCaca?.invoke() ?: modelos.random()
-        if (arquivo in modelos) aoEncontrarModelo?.invoke(arquivo)
+        val encontro = aoLocalizar?.invoke(distancias, idadeMs, precisao, modelos)
+        if (encerrado || !visivel()) return
+        val context = fragment.requireContext()
+        encontroView?.text = when {
+            modelos.isEmpty() -> context.getString(R.string.location_discovery_no_models)
+            encontro != null && encontro.pontosGanhos > 0 -> context.getString(
+                R.string.location_discovery_new, encontro.arquivo, encontro.pontosGanhos)
+            encontro != null -> context.getString(R.string.location_discovery_repeated, encontro.arquivo)
+            else -> {
+                val proximo = PontosTuristicos.lugares.minByOrNull { distancias.getValue(it.id) }
+                if (proximo != null && distancias.getValue(proximo.id) > VisitasGeograficas.RAIO_ENTRADA) {
+                    context.getString(R.string.location_discovery_outside, proximo.nome,
+                        kotlin.math.ceil(distancias.getValue(proximo.id).toDouble()).toInt())
+                } else context.getString(R.string.location_discovery_visited)
+            }
+        }
     }
 
     private fun atualizarEndereco(location: Location) {
